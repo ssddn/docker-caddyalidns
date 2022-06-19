@@ -1,0 +1,36 @@
+{$DOMAIN}:443 {
+
+  tls {
+        dns alidns {
+        access_key_id {$ALIYUN_ACCESS_KEY_ID}
+        access_key_secret {$ALIYUN_ACCESS_KEY_SECRET}
+    }
+  }
+
+  encode gzip
+
+  header / {
+       # 启用 HTTP Strict Transport Security (HSTS)
+       Strict-Transport-Security "max-age=31536000;"
+       # 启用 cross-site filter (XSS) 并告诉浏览器阻止检测到的攻击
+       X-XSS-Protection "1; mode=block"
+       # 禁止在框架内呈现网站 (clickjacking protection)
+       X-Frame-Options "DENY"
+       # 防止搜索引擎编制索引（可选）
+       X-Robots-Tag "none"
+       # 服务器名称移除
+       -Server
+   }
+  # 协商端点也代理到 Rocket
+  reverse_proxy /notifications/hub/negotiate vaultwarden:80
+
+  # 通知重定向到 websockets 服务器
+  reverse_proxy /notifications/hub vaultwarden:3012
+
+  # 将 Root 目录代理到 Rocket
+  reverse_proxy vaultwarden:80 {
+       # 将真正的远程 IP 发送给 Rocket，以便 vaultwarden 可以将其
+       # 放入日志，以便 fail2ban 可以禁止正确的 IP。
+       header_up X-Real-IP {remote_host}
+  }
+}
